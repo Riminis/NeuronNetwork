@@ -19,7 +19,7 @@ class MLP():
         self.cache = {'A': [], 'Z': []}
 
     def activation(self, x):
-        '''Функция активации - сигмоида'''
+        '''Функция активации - RelU'''
         return np.maximum(x, 0)
 
     def loss(self, y_pred, y):
@@ -45,7 +45,7 @@ class MLP():
 
         return a
 
-    def backward(self, X, y):
+    def backward(self, X, y, lambd):
         '''Функция обратного распространения ошибки'''
         m = X.shape[0]
         grads = {'dW': [], 'db': []}
@@ -59,6 +59,8 @@ class MLP():
         dZ = dA * A * (1 - A)
 
         dW = (dZ.T @ A_prev) / m
+        dW += (lambd / m) * self.weights[L]
+
         db = np.sum(dZ, axis=0, keepdims=True) / m
         grads['dW'].append(dW)
         grads['db'].append(db)
@@ -74,6 +76,8 @@ class MLP():
             dZ = dA * (Z_curr > 0).astype(float)
 
             dW = (dZ.T @ A_prev) / m
+            dW += (lambd / m) * self.weights[l]
+
             db = np.sum(dZ, axis=0, keepdims=True) / m
             grads['dW'].append(dW)
             grads['db'].append(db)
@@ -88,7 +92,7 @@ class MLP():
             self.weights[l] -= learning_rate * grads['dW'][l]
             self.biases[l]  -= learning_rate * grads['db'][l]
     
-    def fit(self, X, y, batch_size=8, epoch=5, learning_rate=0.1):
+    def fit(self, X, y, batch_size=8, epoch=5, learning_rate=0.1, lambd=0.0):
         '''Процесс обучения'''
         n = len(y)
         idx = np.arange(n)
@@ -108,7 +112,7 @@ class MLP():
                 epoch_loss += self.loss(y_pred, y_batch)
                 num_batches += 1
 
-                grads = self.backward(X_batch, y_batch)
+                grads = self.backward(X_batch, y_batch, lambd)
                 self.update_params(grads, learning_rate)
 
 if __name__ == '__main__':
@@ -121,14 +125,15 @@ if __name__ == '__main__':
                  [1],
                  [0]])
 
-    model = MLP(layers_dims=[2, 16, 16, 1])
+    model = MLP(layers_dims=[2, 4, 4, 1])
     print(f'Начало обучения')
     model.fit(
         X=X,
         y=y,
-        epoch=500,
+        epoch=1000,
         batch_size=4,
-        learning_rate=2.0
+        learning_rate=1.5,
+        lambd=0.005
         )
     print(f'Конец обучения')
     y_pred = model.forward(X)
